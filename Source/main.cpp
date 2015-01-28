@@ -38,9 +38,18 @@ namespace stringtable
 
 struct userdata
 {
-	INetworkStringTable *data;
+	CNetworkStringTable *data;
 	uint8_t type;
 };
+
+typedef CUtlStableHashtable<
+	CUtlConstString,
+	CNetworkStringTableItem,
+	CaselessStringHashFunctor,
+	UTLConstStringCaselessStringEqualFunctor<char>,
+	uint16,
+	const char *
+> CNetworkStringDictStableHashtable;
 
 static const char *metaname = "stringtable";
 static const uint8_t metatype = 200;
@@ -63,9 +72,9 @@ inline userdata *GetUserdata( lua_State *state, int index )
 	return static_cast<userdata *>( LUA->GetUserdata( index ) );
 }
 
-inline INetworkStringTable *GetAndValidate( lua_State *state, int index, const char *err )
+inline CNetworkStringTable *GetAndValidate( lua_State *state, int index, const char *err )
 {
-	INetworkStringTable *stable = GetUserdata( state, index )->data;
+	CNetworkStringTable *stable = GetUserdata( state, index )->data;
 	if( stable == nullptr )
 		LUA->ThrowError( err );
 
@@ -111,18 +120,24 @@ LUA_FUNCTION_STATIC( SetName )
 	LUA->CheckType( 1, metatype );
 	LUA->CheckType( 2, GarrysMod::Lua::Type::STRING );
 
-	CNetworkStringTable *stable = static_cast<CNetworkStringTable *>( GetAndValidate( state, 1, invalid_error ) );
+	CNetworkStringTable *stable = GetAndValidate( state, 1, invalid_error );
 
 	const char *name = LUA->GetString( 2 );
+	if( global::stringtablecontainer->FindTable( name ) != nullptr )
+	{
+		LUA->PushBool( false );
+		return 1;
+	}
 
 	if( stable->m_pszTableName != nullptr )
 		delete [] stable->m_pszTableName;
 
-	size_t len = V_strlen( name );
-	stable->m_pszTableName = new char[len + 1];
-	V_strncpy( stable->m_pszTableName, name, len + 1 );
+	size_t len = V_strlen( name ) + 1;
+	stable->m_pszTableName = new char[len];
+	V_strncpy( stable->m_pszTableName, name, len );
 
-	return 0;
+	LUA->PushBool( true );
+	return 1;
 }
 
 LUA_FUNCTION_STATIC( GetName )
@@ -215,31 +230,36 @@ LUA_FUNCTION_STATIC( SetString )
 	LUA->CheckType( 2, GarrysMod::Lua::Type::NUMBER );
 	LUA->CheckType( 3, GarrysMod::Lua::Type::STRING );
 
-	CNetworkStringTable *stable = static_cast<CNetworkStringTable *>( GetAndValidate( state, 1, invalid_error ) );
+	CNetworkStringTable *stable = GetAndValidate( state, 1, invalid_error );
 
 	int index = static_cast<int>( LUA->GetNumber( 2 ) );
 
-	CNetworkStringDict *networkdict = reinterpret_cast<CNetworkStringDict *>( stable->m_pItems );
+	const char *str = LUA->GetString( 3 );
+	if( stable->FindStringIndex( str ) != INVALID_STRING_INDEX )
+	{
+		LUA->PushBool( false );
+		return 1;
+	}
+
+	CNetworkStringDict *networkdict = stable->m_pItems;
 	if( networkdict == nullptr )
-		return 0;
+	{
+		LUA->PushBool( false );
+		return 1;
+	}
 
-	CUtlStableHashtable<const char *, CNetworkStringTableItem> &dict = networkdict->m_Items;
-	if( index < 0 || index >= static_cast<int>( dict.Count( ) ) )
-		return 0;
+	CNetworkStringDictStableHashtable &dict = networkdict->m_Items;
+	if( !dict.IsValidHandle( index ) )
+	{
+		LUA->PushBool( false );
+		return 1;
+	}
 
-	const char *string = dict.Key( index );
-	if( string != nullptr )
-		delete [] string;
-
-	string = LUA->GetString( 3 );
-	size_t len = V_strlen( string );
-	char *newstr = new char[len + 1];
-	V_strncpy( newstr, string, len + 1 );
-
-	dict.ReplaceKey( index, newstr );
+	dict.ReplaceKey( index, CUtlConstString( str ) );
 	dict.Element( index ).m_nTickCreated = stable->m_nTickCount + 5;
 
-	return 0;
+	LUA->PushBool( true );
+	return 1;
 }
 
 LUA_FUNCTION_STATIC( GetString )
@@ -249,7 +269,11 @@ LUA_FUNCTION_STATIC( GetString )
 
 	INetworkStringTable *stable = GetAndValidate( state, 1, invalid_error );
 
-	LUA->PushString( stable->GetString( static_cast<int>( LUA->GetNumber( 2 ) ) ) );
+	const char *str = stable->GetString( static_cast<int>( LUA->GetNumber( 2 ) ) );
+	if( str == nullptr )
+		return 0;
+
+	LUA->PushString( str );
 	return 1;
 }
 
@@ -258,20 +282,28 @@ LUA_FUNCTION_STATIC( DeleteString )
 	LUA->CheckType( 1, metatype );
 	LUA->CheckType( 2, GarrysMod::Lua::Type::NUMBER );
 
-	CNetworkStringTable *stable = static_cast<CNetworkStringTable *>( GetAndValidate( state, 1, invalid_error ) );
+	CNetworkStringTable *stable = GetAndValidate( state, 1, invalid_error );
 
 	int index = static_cast<int>( LUA->GetNumber( 2 ) );
 
-	CNetworkStringDict *networkdict = reinterpret_cast<CNetworkStringDict *>( stable->m_pItems );
+	CNetworkStringDict *networkdict = stable->m_pItems;
 	if( networkdict == nullptr )
-		return 0;
+	{
+		LUA->PushBool( false );
+		return 1;
+	}
 
-	CUtlStableHashtable<const char *, CNetworkStringTableItem> &dict = networkdict->m_Items;
-	if( index < 0 || index >= static_cast<int>( dict.Count( ) ) )
-		return 0;
+	CNetworkStringDictStableHashtable &dict = networkdict->m_Items;
+	if( !dict.IsValidHandle( index ) )
+	{
+		LUA->PushBool( false );
+		return 1;
+	}
 
 	dict.RemoveAndAdvance( index );
-	return 0;
+
+	LUA->PushBool( true );
+	return 1;
 }
 
 LUA_FUNCTION_STATIC( SetStringUserData )
@@ -284,9 +316,7 @@ LUA_FUNCTION_STATIC( SetStringUserData )
 
 	size_t len = 0;
 	const char *userdata = LUA->GetString( 3, &len );
-
 	stable->SetStringUserData( static_cast<int>( LUA->GetNumber( 2 ) ), static_cast<int>( len ), userdata );
-
 	return 0;
 }
 
@@ -300,7 +330,6 @@ LUA_FUNCTION_STATIC( GetStringUserData )
 	int len = 0;
 	const char *userdata = static_cast<const char *>( stable->GetStringUserData( static_cast<int>( LUA->GetNumber( 2 ) ), &len ) );
 	LUA->PushString( userdata, len );
-
 	return 1;
 }
 
@@ -330,10 +359,19 @@ LUA_FUNCTION_STATIC( DeleteAllStrings )
 {
 	LUA->CheckType( 1, metatype );
 
-	CNetworkStringTable *stable = static_cast<CNetworkStringTable *>( GetAndValidate( state, 1, invalid_error ) );
+	CNetworkStringTable *stable = GetAndValidate( state, 1, invalid_error );
 
-	stable->m_pItems->Purge( );
-	return 0;
+	CNetworkStringDict *networkdict = stable->m_pItems;
+	if( networkdict == nullptr || networkdict->Count( ) == 0 )
+	{
+		LUA->PushBool( false );
+		return 1;
+	}
+
+	networkdict->Purge( );
+
+	LUA->PushBool( true );
+	return 1;
 }
 
 static void RegisterMetaTable( lua_State *state )
@@ -413,7 +451,9 @@ LUA_FUNCTION_STATIC( Find )
 {
 	LUA->CheckType( 1, GarrysMod::Lua::Type::STRING );
 
-	INetworkStringTable *stable = global::stringtablecontainer->FindTable( LUA->GetString( 1 ) );
+	CNetworkStringTable *stable = static_cast<CNetworkStringTable *>(
+		global::stringtablecontainer->FindTable( LUA->GetString( 1 ) )
+	);
 	if( stable == nullptr )
 		return 0;
 
@@ -425,7 +465,9 @@ LUA_FUNCTION_STATIC( Get )
 {
 	LUA->CheckType( 1, GarrysMod::Lua::Type::NUMBER );
 
-	INetworkStringTable *stable = global::stringtablecontainer->GetTable( static_cast<int>( LUA->GetNumber( 1 ) ) );
+	CNetworkStringTable *stable = static_cast<CNetworkStringTable *>(
+		global::stringtablecontainer->GetTable( static_cast<int>( LUA->GetNumber( 1 ) ) )
+	);
 	if( stable == nullptr )
 		return 0;
 

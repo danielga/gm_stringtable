@@ -17,6 +17,8 @@
 #include <utlvector.h>
 #include <utlbuffer.h>
 #include <tier1/bitbuf.h>
+#include <utlstring.h>
+#include <utlhashtable.h>
 
 class SVC_CreateStringTable;
 class CBaseClient;
@@ -106,8 +108,6 @@ public:
 	virtual const CNetworkStringTableItem &Element( int index ) const = 0;
 };
 
-#include <utlhashtable.h>
-
 class CNetworkStringDict : public INetworkStringDict
 {
 public:
@@ -161,7 +161,14 @@ public:
 	}
 
 //private:
-	CUtlStableHashtable< const char *, CNetworkStringTableItem > m_Items;
+	CUtlStableHashtable<
+		CUtlConstString,
+		CNetworkStringTableItem,
+		CaselessStringHashFunctor,
+		UTLConstStringCaselessStringEqualFunctor<char>,
+		uint16,
+		const char *
+	> m_Items;
 };
 
 //-----------------------------------------------------------------------------
@@ -264,10 +271,10 @@ public:
 	void					*m_pObject;
 
 	// pointer to local backdoor table 
-	INetworkStringTable		*m_pMirrorTable;
+	CNetworkStringTable		*m_pMirrorTable;
 
-	INetworkStringDict		*m_pItems;
-	INetworkStringDict		*m_pItemsClientSide;	 // For m_bAllowClientSideAddString, these items are non-networked and are referenced by a negative string index!!!
+	CNetworkStringDict		*m_pItems;
+	CNetworkStringDict		*m_pItemsClientSide;	 // For m_bAllowClientSideAddString, these items are non-networked and are referenced by a negative string index!!!
 };
 
 //-----------------------------------------------------------------------------
