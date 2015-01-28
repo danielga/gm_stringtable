@@ -1,5 +1,5 @@
-gm_stringtables
-===============
+gm_stringtable
+==============
 
 A module for Garry's Mod that provides interfaces to interact with stringtables from VALVe's engine.
 

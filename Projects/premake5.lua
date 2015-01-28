@@ -3,7 +3,7 @@ GARRYSMOD_MODULE_BASE_FOLDER = "../gmod-module-base"
 SOURCE_FOLDER = "../Source"
 PROJECT_FOLDER = os.get() .. "/" .. _ACTION
 
-solution("gm_stringtables")
+solution("gm_stringtable")
 	language("C++")
 	location(PROJECT_FOLDER)
 	warnings("Extra")
@@ -25,7 +25,7 @@ solution("gm_stringtables")
 		objdir(PROJECT_FOLDER .. "/Intermediate")
 		targetdir(PROJECT_FOLDER .. "/Debug")
 
-	project("gmsv_stringtables")
+	project("gmsv_stringtable")
 		kind("SharedLib")
 		defines({
 			"GMMODULE",
@@ -77,7 +77,7 @@ solution("gm_stringtables")
 			buildoptions({"-std=c++11"})
 			targetsuffix("_mac")
 
-	project("gmcl_stringtables")
+	project("gmcl_stringtable")
 		kind("SharedLib")
 		defines({
 			"GMMODULE",
