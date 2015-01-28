@@ -36,17 +36,7 @@ public:
 		unsigned char	*data;
 	};
 
-	CNetworkStringTableItem( void )
-	{
-		m_pUserData = NULL;
-		m_nUserDataLength = 0;
-		m_nTickChanged = 0;
-
-#ifndef SHARED_NET_STRING_TABLES
-		m_nTickCreated = 0;
-		m_pChangeList = NULL;
-#endif
-	}
+	CNetworkStringTableItem( void );
 
 	~CNetworkStringTableItem( void )
 	{
