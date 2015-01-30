@@ -161,14 +161,30 @@ public:
 	}
 
 //private:
-	CUtlStableHashtable<
+	typedef CUtlStableHashtable<
 		CUtlConstString,
 		CNetworkStringTableItem,
 		CaselessStringHashFunctor,
 		UTLConstStringCaselessStringEqualFunctor<char>,
 		uint16,
 		const char *
-	> m_Items;
+	> StableHashtable_t;
+
+	StableHashtable_t m_Items;
+
+	class _StableHashtable_t : public StableHashtable_t
+	{
+	public:
+		Hashtable_t &GetHashTable( )
+		{
+			return m_table;
+		}
+
+		LinkedList_t &GetLinkedList( )
+		{
+			return m_data;
+		}
+	};
 };
 
 //-----------------------------------------------------------------------------

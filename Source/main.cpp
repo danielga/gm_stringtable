@@ -42,15 +42,6 @@ struct userdata
 	uint8_t type;
 };
 
-typedef CUtlStableHashtable<
-	CUtlConstString,
-	CNetworkStringTableItem,
-	CaselessStringHashFunctor,
-	UTLConstStringCaselessStringEqualFunctor<char>,
-	uint16,
-	const char *
-> CNetworkStringDictStableHashtable;
-
 static const char *metaname = "stringtable";
 static const uint8_t metatype = 200;
 
@@ -132,9 +123,7 @@ LUA_FUNCTION_STATIC( SetName )
 	if( stable->m_pszTableName != nullptr )
 		delete [] stable->m_pszTableName;
 
-	size_t len = V_strlen( name ) + 1;
-	stable->m_pszTableName = new char[len];
-	V_strncpy( stable->m_pszTableName, name, len );
+	stable->m_pszTableName = StringFuncs<char>::Duplicate( name );
 
 	LUA->PushBool( true );
 	return 1;
@@ -232,7 +221,7 @@ LUA_FUNCTION_STATIC( SetString )
 
 	CNetworkStringTable *stable = GetAndValidate( state, 1, invalid_error );
 
-	int index = static_cast<int>( LUA->GetNumber( 2 ) );
+	uint32_t index = static_cast<uint32_t>( LUA->GetNumber( 2 ) );
 
 	const char *str = LUA->GetString( 3 );
 	if( stable->FindStringIndex( str ) != INVALID_STRING_INDEX )
@@ -248,14 +237,14 @@ LUA_FUNCTION_STATIC( SetString )
 		return 1;
 	}
 
-	CNetworkStringDictStableHashtable &dict = networkdict->m_Items;
+	CNetworkStringDict::StableHashtable_t &dict = networkdict->m_Items;
 	if( !dict.IsValidHandle( index ) )
 	{
 		LUA->PushBool( false );
 		return 1;
 	}
 
-	dict.ReplaceKey( index, CUtlConstString( str ) );
+	dict.ReplaceKey( index, str );
 	dict.Element( index ).m_nTickCreated = stable->m_nTickCount + 5;
 
 	LUA->PushBool( true );
@@ -284,7 +273,7 @@ LUA_FUNCTION_STATIC( DeleteString )
 
 	CNetworkStringTable *stable = GetAndValidate( state, 1, invalid_error );
 
-	int index = static_cast<int>( LUA->GetNumber( 2 ) );
+	uint32_t index = static_cast<uint32_t>( LUA->GetNumber( 2 ) );
 
 	CNetworkStringDict *networkdict = stable->m_pItems;
 	if( networkdict == nullptr )
@@ -293,14 +282,31 @@ LUA_FUNCTION_STATIC( DeleteString )
 		return 1;
 	}
 
-	CNetworkStringDictStableHashtable &dict = networkdict->m_Items;
+	CNetworkStringDict::_StableHashtable_t &dict = static_cast<CNetworkStringDict::_StableHashtable_t &>( networkdict->m_Items );
 	if( !dict.IsValidHandle( index ) )
 	{
 		LUA->PushBool( false );
 		return 1;
 	}
 
-	dict.RemoveAndAdvance( index );
+	uint32_t max = dict.Count( ) - 1;
+
+	auto &hashtable = dict.GetHashTable( );
+	UtlHashHandle_t first = hashtable.FirstHandle( ), idx = hashtable.InvalidHandle( );
+	for( UtlHashHandle_t k = first; k != hashtable.InvalidHandle( ); k = hashtable.NextHandle( k ) )
+		if( hashtable.Key( k ).m_index == max )
+			idx = k;
+
+	hashtable.RemoveAndAdvance( idx != hashtable.InvalidHandle( ) ? idx : first );
+
+	auto &linkedlist = dict.GetLinkedList( );
+	for( uint32_t k = index; k < max; ++k )
+	{
+		linkedlist[k].m_key = linkedlist[k + 1].m_key;
+		V_swap( linkedlist[k].m_value, linkedlist[k + 1].m_value );
+	}
+
+	linkedlist.Remove( max );
 
 	LUA->PushBool( true );
 	return 1;
