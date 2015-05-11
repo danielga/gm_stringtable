@@ -29,7 +29,7 @@ solution("gm_stringtable")
 		kind("SharedLib")
 		defines({
 			"GMMODULE",
-			"STRINGTABLES_SERVER",
+			"STRINGTABLE_SERVER",
 			"SUPPRESS_INVALID_PARAMETER_NO_INFO"
 		})
 		includedirs({
@@ -41,8 +41,7 @@ solution("gm_stringtable")
 		})
 		files({
 			SOURCE_FOLDER .. "/*.h",
-			SOURCE_FOLDER .. "/*.cpp",
-			SDK_FOLDER .. "/public/tier0/memoverride.cpp"
+			SOURCE_FOLDER .. "/*.cpp"
 		})
 		vpaths({
 			["Header files"] = SOURCE_FOLDER .. "/**.h",
@@ -56,6 +55,7 @@ solution("gm_stringtable")
 		targetextension(".dll")
 
 		filter("system:windows")
+			files({SDK_FOLDER .. "/public/tier0/memoverride.cpp"})
 			libdirs({SDK_FOLDER .. "/lib/public"})
 			links({"tier0", "tier1"})
 			targetsuffix("_win32")
@@ -64,7 +64,14 @@ solution("gm_stringtable")
 				linkoptions({"/NODEFAULTLIB:\"libcmt\""})
 
 		filter("system:linux")
-			defines({"POSIX", "GNUC", "_LINUX"})
+			defines({
+				"COMPILER_GCC",
+				"POSIX",
+				"LINUX",
+				"_LINUX",
+				"GNUC",
+				"NO_MALLOC_OVERRIDE"
+			})
 			libdirs({SDK_FOLDER .. "/lib/public/linux32"})
 			links({"dl", "tier0_srv"})
 			linkoptions({SDK_FOLDER .. "/lib/public/linux32/tier1.a"})
@@ -81,7 +88,7 @@ solution("gm_stringtable")
 		kind("SharedLib")
 		defines({
 			"GMMODULE",
-			"STRINGTABLES_CLIENT",
+			"STRINGTABLE_CLIENT",
 			"SUPPRESS_INVALID_PARAMETER_NO_INFO"
 		})
 		includedirs({
@@ -93,8 +100,7 @@ solution("gm_stringtable")
 		})
 		files({
 			SOURCE_FOLDER .. "/*.h",
-			SOURCE_FOLDER .. "/*.cpp",
-			SDK_FOLDER .. "/public/tier0/memoverride.cpp"
+			SOURCE_FOLDER .. "/*.cpp"
 		})
 		vpaths({
 			["Header files"] = SOURCE_FOLDER .. "/**.h",
@@ -108,6 +114,7 @@ solution("gm_stringtable")
 		targetextension(".dll")
 
 		filter("system:windows")
+			files({SDK_FOLDER .. "/public/tier0/memoverride.cpp"})
 			libdirs({SDK_FOLDER .. "/lib/public"})
 			links({"tier0", "tier1"})
 			targetsuffix("_win32")
@@ -116,7 +123,14 @@ solution("gm_stringtable")
 				linkoptions({"/NODEFAULTLIB:\"libcmt\""})
 
 		filter("system:linux")
-			defines({"POSIX", "GNUC", "_LINUX"})
+			defines({
+				"COMPILER_GCC",
+				"POSIX",
+				"LINUX",
+				"_LINUX",
+				"GNUC",
+				"NO_MALLOC_OVERRIDE"
+			})
 			libdirs({SDK_FOLDER .. "/lib/public/linux32"})
 			links({"dl", "tier0"})
 			linkoptions({SDK_FOLDER .. "/lib/public/linux32/tier1.a"})

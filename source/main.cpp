@@ -8,11 +8,11 @@ namespace global
 
 static CDllDemandLoader engine_loader( "engine.dll" );
 
-#if defined STRINGTABLES_SERVER
+#if defined STRINGTABLE_SERVER
 
 static const char *networkstringtable_interface = INTERFACENAME_NETWORKSTRINGTABLESERVER;
 
-#elif defined STRINGTABLES_CLIENT
+#elif defined STRINGTABLE_CLIENT
 
 static const char *networkstringtable_interface = INTERFACENAME_NETWORKSTRINGTABLECLIENT;
 
