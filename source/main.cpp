@@ -6,7 +6,27 @@
 namespace global
 {
 
+#if defined _WIN32
+
 static CDllDemandLoader engine_loader( "engine.dll" );
+
+#elif defined __linux
+
+#if defined STRINGTABLE_SERVER
+
+static CDllDemandLoader engine_loader( "engine_srv.so" );
+
+#elif defined STRINGTABLE_CLIENT
+
+static CDllDemandLoader engine_loader( "engine.so" );
+
+#endif
+
+#elif defined __APPLE__
+
+static CDllDemandLoader engine_loader( "engine.dylib" );
+
+#endif
 
 #if defined STRINGTABLE_SERVER
 
