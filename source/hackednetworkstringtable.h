@@ -82,7 +82,6 @@ public:
 	// void			SetTickCount( int count ) ;
 	inline int		GetTickChanged( void ) const { return m_nTickChanged; }
 
-public:
 	unsigned char	*m_pUserData;
 	int				m_nUserDataLength;
 	int				m_nTickChanged;
@@ -197,7 +196,6 @@ public:
 					CNetworkStringTable( TABLEID id, const char *tableName, int maxentries, int userdatafixedsize, int userdatanetworkbits, bool bIsFilenames );
 	virtual			~CNetworkStringTable( void );
 
-public:
 	// INetworkStringTable interface:
 
 	const char		*GetTableName( void ) const;
@@ -223,8 +221,6 @@ public:
 	bool			IsUserDataFixedSize() const;
 	int				GetUserDataSizeBits() const;
 	int				GetUserDataSize() const;
-
-public:
 	
 #ifndef SHARED_NET_STRING_TABLES
 	int				WriteUpdate( CBaseClient *client, bf_write &buf, int tick_ack );
@@ -300,10 +296,8 @@ class CNetworkStringTableContainer : public INetworkStringTableContainer
 {
 public:
 	// Construction
-							CNetworkStringTableContainer( void );
-							~CNetworkStringTableContainer( void );
-
-public:
+	CNetworkStringTableContainer( void );
+	~CNetworkStringTableContainer( void );
 
 	// Implement INetworkStringTableContainer
 	INetworkStringTable	*CreateStringTable( const char *tableName, int maxentries, int userdatafixedsize = 0, int userdatanetworkbits = 0 )	{ return CreateStringTableEx( tableName, maxentries, userdatafixedsize, userdatanetworkbits, false ); }
@@ -316,8 +310,6 @@ public:
 	int					GetNumTables( void ) const;
 
 	virtual void				SetAllowClientSideAddString( INetworkStringTable *table, bool bAllowClientSideAddString );
-
-public:
 
 	// Update a client (called once during packet sending per client)
 	void		SetTick( int tick_count);
@@ -352,7 +344,6 @@ public:
 
 	void		SetAllowClientSideAddString( bool state );
 
-private:
 	bool		m_bAllowCreation;	// creat guard Guard
 	int			m_nTickCount;		// current tick
 	bool		m_bLocked;			// currently locked?
