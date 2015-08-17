@@ -38,28 +38,19 @@ struct UserData
 {
 	CNetworkStringTable *stringtable;
 	uint8_t type;
+	char *name_original;
+	char name[64];
 };
 
 static const char *metaname = "stringtable";
 static const uint8_t metatype = 200;
 static const char *invalid_error = "invalid stringtable";
-
-static GarrysMod::Lua::AutoReference stringtables_names;
+static const char *table_name = "stringtables_objects";
 
 inline void CheckType( lua_State *state, int32_t index )
 {
 	if( !LUA->IsType( index, metatype ) )
 		luaL_typerror( state, index, metaname );
-}
-
-inline void Create( lua_State *state, CNetworkStringTable *stable )
-{
-	UserData *udata = static_cast<UserData *>( LUA->NewUserdata( sizeof( UserData ) ) );
-	udata->stringtable = stable;
-	udata->type = metatype;
-
-	LUA->CreateMetaTableType( metaname, metatype );
-	LUA->SetMetaTable( -2 );
 }
 
 inline UserData *GetUserdata( lua_State *state, int index )
@@ -77,10 +68,67 @@ static CNetworkStringTable *Get( lua_State *state, int32_t index )
 	return stable;
 }
 
+inline void Push( lua_State *state, CNetworkStringTable *stringtable )
+{
+	if( stringtable == nullptr )
+	{
+		LUA->PushNil( );
+		return;
+	}
+
+	LUA->GetField( GarrysMod::Lua::INDEX_REGISTRY, table_name );
+	LUA->PushUserdata( stringtable );
+	LUA->GetTable( -2 );
+	if( LUA->IsType( -1, metatype ) )
+	{
+		LUA->Remove( -2 );
+		return;
+	}
+
+	LUA->Pop( 1 );
+
+	UserData *udata = static_cast<UserData *>( LUA->NewUserdata( sizeof( UserData ) ) );
+	udata->stringtable = stringtable;
+	udata->type = metatype;
+	udata->name_original = stringtable->m_pszTableName;
+
+	LUA->CreateMetaTableType( metaname, metatype );
+	LUA->SetMetaTable( -2 );
+
+	LUA->CreateTable( );
+	lua_setfenv( state, -2 );
+
+	LUA->PushUserdata( stringtable );
+	LUA->Push( -2 );
+	LUA->SetTable( -4 );
+	LUA->Remove( -2 );
+}
+
+inline CNetworkStringTable *Destroy( lua_State *state, int32_t index )
+{
+	UserData *udata = GetUserdata( state, 1 );
+	CNetworkStringTable *stringtable = udata->stringtable;
+	if( stringtable == nullptr )
+		return nullptr;
+
+	LUA->GetField( GarrysMod::Lua::INDEX_REGISTRY, table_name );
+	LUA->PushUserdata( stringtable );
+	LUA->PushNil( );
+	LUA->SetTable( -2 );
+	LUA->Pop( 1 );
+
+	stringtable->m_pszTableName = udata->name_original;
+	udata->stringtable = nullptr;
+
+	return stringtable;
+}
+
 LUA_FUNCTION_STATIC( gc )
 {
-	LUA->CheckType( 1, metatype );
-	GetUserdata( state, 1 )->stringtable = nullptr;
+	if( !LUA->IsType( 1, metatype ) )
+		return 0;
+
+	Destroy( state, 1 );
 	return 0;
 }
 
@@ -123,42 +171,15 @@ LUA_FUNCTION_STATIC( newindex )
 
 LUA_FUNCTION_STATIC( SetName )
 {
-	CNetworkStringTable *stable = Get( state, 1 );
-	LUA->CheckType( 2, GarrysMod::Lua::Type::STRING );
+	UserData *udata = GetUserdata( state, 1 );
+	CNetworkStringTable *stringtable = udata->stringtable;
+	if( stringtable == nullptr )
+		LUA->ThrowError( invalid_error );
 
-	const char *name = LUA->GetString( 2 );
-	if( global::stringtablecontainer->FindTable( name ) != nullptr )
-	{
-		LUA->PushBool( false );
-		return 1;
-	}
+	V_strncpy( udata->name, LUA->CheckString( 2 ), sizeof( udata->name ) );
+	stringtable->m_pszTableName = udata->name;
 
-	char *original = stable->m_pszTableName;
-
-	stringtables_names.Push( );
-
-	LUA->GetField( -1, original );
-	if( LUA->IsType( -1, GarrysMod::Lua::Type::LIGHTUSERDATA ) )
-	{
-		char *_original = static_cast<char *>( LUA->GetUserdata( -1 ) );
-
-		LUA->PushNil( );
-		LUA->SetField( -2, original );
-
-		original = _original;
-	}
-
-	LUA->Pop( 1 );
-
-	LUA->PushString( name );
-	LUA->Push( -1 );
-	LUA->PushUserdata( original );
-	LUA->SetTable( -4 );
-
-	stable->m_pszTableName = const_cast<char *>( LUA->GetString( -1 ) );
-
-	LUA->PushBool( true );
-	return 1;
+	return 0;
 }
 
 LUA_FUNCTION_STATIC( GetName )
@@ -363,9 +384,8 @@ LUA_FUNCTION_STATIC( DeleteAllStrings )
 
 static void Initialize( lua_State *state )
 {
-	stringtables_names.Setup( LUA );
 	LUA->CreateTable( );
-	stringtables_names.Create( );
+	LUA->SetField( GarrysMod::Lua::INDEX_REGISTRY, table_name );
 
 	LUA->CreateMetaTableType( metaname, metatype );
 
@@ -440,26 +460,26 @@ static void Initialize( lua_State *state )
 
 static void Deinitialize( lua_State *state )
 {
-	LUA->PushSpecial( GarrysMod::Lua::SPECIAL_REG );
+	LUA->PushNil( );
+	LUA->SetField( GarrysMod::Lua::INDEX_REGISTRY, metaname );
+
+	LUA->GetField( GarrysMod::Lua::INDEX_REGISTRY, table_name );
+
+	LUA->PushCFunction( gc );
 
 	LUA->PushNil( );
-	LUA->SetField( -2, metaname );
-
-	LUA->Pop( 1 );
-
-	stringtables_names.Push( );
-
-	CUtlVector<CNetworkStringTable *> &tables = global::stringtablecontainer->m_Tables;
-	for( int32_t k = 0; k < tables.Count( ); ++k )
+	while( LUA->Next( -2 ) != 0 )
 	{
-		CNetworkStringTable *table = tables[k];
-		LUA->GetField( -1, table->m_pszTableName );
-		if( LUA->IsType( -1, GarrysMod::Lua::Type::LIGHTUSERDATA ) )
-			table->m_pszTableName = static_cast<char *>( LUA->GetUserdata( -1 ) );
+		LUA->Push( -3 );
+		LUA->Push( -2 );
+		LUA->Call( 1, 0 );
+		LUA->Pop( 1 );
 	}
 
-	LUA->Pop( 1 );
-	stringtables_names.Free( );
+	LUA->Pop( 2 );
+
+	LUA->PushNil( );
+	LUA->SetField( GarrysMod::Lua::INDEX_REGISTRY, table_name );
 }
 
 }
@@ -467,31 +487,21 @@ static void Deinitialize( lua_State *state )
 namespace stringtables
 {
 
+static const char *table_name = "stringtable";
+
 LUA_FUNCTION_STATIC( Find )
 {
-	LUA->CheckType( 1, GarrysMod::Lua::Type::STRING );
-
-	CNetworkStringTable *stable = static_cast<CNetworkStringTable *>(
-		global::stringtablecontainer->FindTable( LUA->GetString( 1 ) )
-	);
-	if( stable == nullptr )
-		return 0;
-
-	stringtable::Create( state, stable );
+	stringtable::Push( state, static_cast<CNetworkStringTable *>(
+		global::stringtablecontainer->FindTable( LUA->CheckString( 1 ) )
+	) );
 	return 1;
 }
 
 LUA_FUNCTION_STATIC( Get )
 {
-	LUA->CheckType( 1, GarrysMod::Lua::Type::NUMBER );
-
-	CNetworkStringTable *stable = static_cast<CNetworkStringTable *>(
-		global::stringtablecontainer->GetTable( static_cast<int>( LUA->GetNumber( 1 ) ) )
-	);
-	if( stable == nullptr )
-		return 0;
-
-	stringtable::Create( state, stable );
+	stringtable::Push( state, static_cast<CNetworkStringTable *>(
+		global::stringtablecontainer->GetTable( static_cast<int32_t>( LUA->CheckNumber( 1 ) ) )
+	) );
 	return 1;
 }
 
@@ -503,8 +513,6 @@ LUA_FUNCTION_STATIC( GetCount )
 
 static void Initialize( lua_State *state )
 {
-	LUA->PushSpecial( GarrysMod::Lua::SPECIAL_GLOB );
-
 	LUA->CreateTable( );
 
 	LUA->PushCFunction( Find );
@@ -516,19 +524,13 @@ static void Initialize( lua_State *state )
 	LUA->PushCFunction( GetCount );
 	LUA->SetField( -2, "GetCount" );
 
-	LUA->SetField( -2, "stringtable" );
-
-	LUA->Pop( 1 );
+	LUA->SetField( GarrysMod::Lua::INDEX_GLOBAL, table_name );
 }
 
 static void Deinitialize( lua_State *state )
 {
-	LUA->PushSpecial( GarrysMod::Lua::SPECIAL_GLOB );
-
 	LUA->PushNil( );
-	LUA->SetField( -2, "stringtable" );
-
-	LUA->Pop( 1 );
+	LUA->SetField( GarrysMod::Lua::INDEX_GLOBAL, table_name );
 }
 
 }
