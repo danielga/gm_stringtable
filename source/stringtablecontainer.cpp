@@ -2,6 +2,14 @@
 #include <stringtable.hpp>
 #include <GarrysMod/Lua/Interface.h>
 #include <hackednetworkstringtable.h>
+
+#if defined max || defined min
+
+#undef max
+#undef min
+
+#endif
+
 #include <interfaces.hpp>
 #include <cstdint>
 

@@ -13,9 +13,11 @@ include(gmcommon)
 
 CreateSolution("stringtable")
 	CreateProject(SERVERSIDE)
+		warnings("Default")
 		IncludeLuaShared()
 		IncludeSourceSDK()
 
 	CreateProject(CLIENTSIDE)
+		warnings("Default")
 		IncludeLuaShared()
 		IncludeSourceSDK()

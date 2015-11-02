@@ -3,6 +3,14 @@
 #include <GarrysMod/Lua/Interface.h>
 #include <hackednetworkstringtable.h>
 #include <lua.hpp>
+
+#if defined min || defined max
+
+#undef min
+#undef max
+
+#endif
+
 #include <cstdint>
 #include <algorithm>
 
