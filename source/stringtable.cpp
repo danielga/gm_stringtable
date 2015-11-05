@@ -14,6 +14,21 @@
 #include <cstdint>
 #include <algorithm>
 
+void CNetworkStringTable::Dump( )
+{
+	ConMsg( "Table %s\n", GetTableName( ) );
+	ConMsg( "  %i/%i items\n", GetNumStrings( ), GetMaxStrings( ) );
+
+	for( int32_t i = 0; i < GetNumStrings( ); ++i )
+		ConMsg( "  %i : %s\n", i, GetString( i ) );
+
+	if( m_pItemsClientSide )
+		for( int32_t i = 0; i < static_cast<int32_t>( m_pItemsClientSide->Count( ) ); ++i )
+			ConMsg( "  %i : %s\n", i, m_pItemsClientSide->String( i ) );
+
+	ConMsg( "\n" );
+}
+
 namespace stringtable
 {
 
@@ -361,6 +376,73 @@ LUA_FUNCTION_STATIC( DeleteAllStrings )
 	return 1;
 }
 
+LUA_FUNCTION_STATIC( GetTable )
+{
+	INetworkStringTable *stable = Get( state, 1 );
+
+	LUA->CreateTable( );
+
+	for( int32_t i = 0; i < stable->GetNumStrings( ); ++i )
+	{
+		LUA->PushString( stable->GetString( i ) );
+		int32_t len = 0;
+		const char *userdata = static_cast<const char *>( stable->GetStringUserData( i, &len ) );
+		LUA->PushString( userdata, len );
+		LUA->SetTable( -3 );
+	}
+
+	return 1;
+}
+
+LUA_FUNCTION_STATIC( GetStrings )
+{
+	INetworkStringTable *stable = Get( state, 1 );
+
+	LUA->CreateTable( );
+
+	for( int32_t i = 0; i < stable->GetNumStrings( ); ++i )
+	{
+		LUA->PushNumber( i );
+		LUA->PushString( stable->GetString( i ) );
+		LUA->SetTable( -3 );
+	}
+
+	return 1;
+}
+
+LUA_FUNCTION_STATIC( GetStringsUserData )
+{
+	INetworkStringTable *stable = Get( state, 1 );
+
+	LUA->CreateTable( );
+
+	for( int32_t i = 0; i < stable->GetNumStrings( ); ++i )
+	{
+		LUA->PushNumber( i );
+		int32_t len = 0;
+		const char *userdata = static_cast<const char *>( stable->GetStringUserData( i, &len ) );
+		LUA->PushString( userdata, len );
+		LUA->SetTable( -3 );
+	}
+
+	return 1;
+}
+
+LUA_FUNCTION_STATIC( Dump )
+{
+	Get( state, 1 )->Dump( );
+	return 0;
+}
+
+LUA_FUNCTION_STATIC( Lock )
+{
+	CNetworkStringTable *stable = Get( state, 1 );
+	LUA->CheckType( 2, GarrysMod::Lua::Type::BOOL );
+
+	stable->Lock( LUA->GetBool( 2 ) );
+	return 0;
+}
+
 void Initialize( lua_State *state )
 {
 	LUA->CreateTable( );
@@ -433,6 +515,21 @@ void Initialize( lua_State *state )
 
 	LUA->PushCFunction( DeleteAllStrings );
 	LUA->SetField( -2, "DeleteAllStrings" );
+
+	LUA->PushCFunction( GetTable );
+	LUA->SetField( -2, "GetTable" );
+
+	LUA->PushCFunction( GetStrings );
+	LUA->SetField( -2, "GetStrings" );
+
+	LUA->PushCFunction( GetStringsUserData );
+	LUA->SetField( -2, "GetStringsUserData" );
+
+	LUA->PushCFunction( Dump );
+	LUA->SetField( -2, "Dump" );
+
+	LUA->PushCFunction( Lock );
+	LUA->SetField( -2, "Lock" );
 
 	LUA->Pop( 1 );
 }

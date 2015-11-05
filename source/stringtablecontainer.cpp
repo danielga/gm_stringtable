@@ -13,6 +13,23 @@
 #include <interfaces.hpp>
 #include <cstdint>
 
+void CNetworkStringTableContainer::Dump( )
+{
+	for( int32_t i = 0; i < m_Tables.Count( ); ++i )
+		m_Tables[i]->Dump( );
+}
+
+bool CNetworkStringTableContainer::Lock( bool bLock )
+{
+	bool oldLock = m_bLocked;
+	m_bLocked = bLock;
+
+	for( int32_t i = 0; i < m_Tables.Count( ); ++i )
+		reinterpret_cast<CNetworkStringTable *>( GetTable( i ) )->Lock( bLock );
+
+	return oldLock;
+}
+
 namespace stringtablecontainer
 {
 
@@ -54,6 +71,32 @@ LUA_FUNCTION_STATIC( GetCount )
 	return 1;
 }
 
+LUA_FUNCTION_STATIC( Lock )
+{
+	LUA->PushBool( stcinternal->Lock( LUA->GetBool( 1 ) ) );
+	return 1;
+}
+
+LUA_FUNCTION_STATIC( Dump )
+{
+	stcinternal->Dump( );
+	return 0;
+}
+
+LUA_FUNCTION_STATIC( GetNames )
+{
+	LUA->CreateTable( );
+
+	for( int32_t i = 0; i < stcinternal->GetNumTables( ); ++i )
+	{
+		LUA->PushNumber( i );
+		LUA->PushString( stcinternal->GetTable( i )->GetTableName( ) );
+		LUA->SetTable( -3 );
+	}
+
+	return 1;
+}
+
 void Initialize( lua_State *state )
 {
 	stcinternal = engine_loader.GetInterface<CNetworkStringTableContainer>( networkstringtable_interface );
@@ -62,11 +105,11 @@ void Initialize( lua_State *state )
 
 	LUA->CreateTable( );
 
-	LUA->PushString( "stringtable 1.0.0" );
+	LUA->PushString( "stringtable 1.1.0" );
 	LUA->SetField( -2, "Version" );
 
 	// version num follows LuaJIT style, xxyyzz
-	LUA->PushNumber( 10000 );
+	LUA->PushNumber( 10100 );
 	LUA->SetField( -2, "VersionNum" );
 
 	LUA->PushCFunction( Find );
@@ -77,6 +120,15 @@ void Initialize( lua_State *state )
 
 	LUA->PushCFunction( GetCount );
 	LUA->SetField( -2, "GetCount" );
+
+	LUA->PushCFunction( Lock );
+	LUA->SetField( -2, "Lock" );
+
+	LUA->PushCFunction( Dump );
+	LUA->SetField( -2, "Dump" );
+
+	LUA->PushCFunction( GetNames );
+	LUA->SetField( -2, "GetNames" );
 
 	LUA->SetField( GarrysMod::Lua::INDEX_GLOBAL, table_name );
 }
