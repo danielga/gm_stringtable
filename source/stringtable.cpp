@@ -104,7 +104,7 @@ void Push( lua_State *state, CNetworkStringTable *stringtable )
 
 static void Destroy( lua_State *state, int32_t index )
 {
-	userdata *udata = GetUserdata( state, 1 );
+	userdata *udata = GetUserdata( state, index );
 	CNetworkStringTable *stringtable = udata->stringtable;
 	if( stringtable == nullptr )
 		return;
