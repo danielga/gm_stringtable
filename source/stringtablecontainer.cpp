@@ -10,7 +10,7 @@
 
 #endif
 
-#include <interfaces.hpp>
+#include <GarrysMod/Interfaces.hpp>
 #include <cstdint>
 
 void CNetworkStringTableContainer::Dump( )
