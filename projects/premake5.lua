@@ -12,8 +12,6 @@ end
 include(gmcommon)
 
 CreateWorkspace({name = "stringtable"})
-	warnings("Default")
-
 	CreateProject({serverside = true})
 		IncludeLuaShared()
 		IncludeSDKCommon()
