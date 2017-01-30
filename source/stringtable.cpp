@@ -548,8 +548,6 @@ void Deinitialize( lua_State *state )
 			Destroy( state, -1 );
 			LUA->Pop( 1 );
 		}
-
-		LUA->Pop( 1 );
 	}
 
 	LUA->Pop( 1 );
