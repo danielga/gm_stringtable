@@ -19,7 +19,7 @@ end
 
 include(gmcommon)
 
-CreateWorkspace({name = "stringtable"})
+CreateWorkspace({name = "stringtable", allow_debug = false})
 	warnings("Default")
 
 	CreateProject({serverside = true})
