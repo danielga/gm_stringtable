@@ -51,7 +51,7 @@ static const char *table_name = "stringtable";
 
 LUA_FUNCTION_STATIC( Find )
 {
-	stringtable::Push( state, static_cast<CNetworkStringTable *>(
+	stringtable::Push( LUA, static_cast<CNetworkStringTable *>(
 		stcinternal->FindTable( LUA->CheckString( 1 ) )
 	) );
 	return 1;
@@ -59,7 +59,7 @@ LUA_FUNCTION_STATIC( Find )
 
 LUA_FUNCTION_STATIC( Get )
 {
-	stringtable::Push( state, static_cast<CNetworkStringTable *>(
+	stringtable::Push( LUA, static_cast<CNetworkStringTable *>(
 		stcinternal->GetTable( static_cast<int32_t>( LUA->CheckNumber( 1 ) ) )
 	) );
 	return 1;
@@ -97,7 +97,7 @@ LUA_FUNCTION_STATIC( GetNames )
 	return 1;
 }
 
-void Initialize( lua_State *state )
+void Initialize( GarrysMod::Lua::ILuaBase *LUA )
 {
 	stcinternal = engine_loader.GetInterface<CNetworkStringTableContainer>( networkstringtable_interface );
 	if( stcinternal == nullptr )
@@ -105,11 +105,11 @@ void Initialize( lua_State *state )
 
 	LUA->CreateTable( );
 
-	LUA->PushString( "stringtable 1.1.0" );
+	LUA->PushString( "stringtable 1.1.1" );
 	LUA->SetField( -2, "Version" );
 
 	// version num follows LuaJIT style, xxyyzz
-	LUA->PushNumber( 10100 );
+	LUA->PushNumber( 10101 );
 	LUA->SetField( -2, "VersionNum" );
 
 	LUA->PushCFunction( Find );
@@ -133,7 +133,7 @@ void Initialize( lua_State *state )
 	LUA->SetField( GarrysMod::Lua::INDEX_GLOBAL, table_name );
 }
 
-void Deinitialize( lua_State *state )
+void Deinitialize( GarrysMod::Lua::ILuaBase *LUA )
 {
 	LUA->PushNil( );
 	LUA->SetField( GarrysMod::Lua::INDEX_GLOBAL, table_name );

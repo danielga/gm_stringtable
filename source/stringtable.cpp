@@ -32,41 +32,40 @@ void CNetworkStringTable::Dump( )
 namespace stringtable
 {
 
-struct userdata
+struct Container
 {
 	CNetworkStringTable *stringtable;
-	uint8_t type;
 	char *name_original;
 	char name[64];
 };
 
-static const char *metaname = "stringtable";
-static const uint8_t metatype = 200;
-static const char *invalid_error = "invalid stringtable";
-static const char *table_name = "stringtables_objects";
+static const char metaname[] = "stringtable";
+static uint8_t metatype = GarrysMod::Lua::Type::NONE;
+static const char invalid_error[] = "invalid stringtable";
+static const char table_name[] = "stringtables_objects";
 
-inline void CheckType( lua_State *state, int32_t index )
+inline void CheckType( GarrysMod::Lua::ILuaBase *LUA, int32_t index )
 {
 	if( !LUA->IsType( index, metatype ) )
-		luaL_typerror( state, index, metaname );
+		luaL_typerror( LUA->state, index, metaname );
 }
 
-inline userdata *GetUserdata( lua_State *state, int index )
+inline Container *GetUserdata( GarrysMod::Lua::ILuaBase *LUA, int index )
 {
-	return static_cast<userdata *>( LUA->GetUserdata( index ) );
+	return LUA->GetUserType<Container>( index, metatype );
 }
 
-static CNetworkStringTable *Get( lua_State *state, int32_t index )
+static CNetworkStringTable *Get( GarrysMod::Lua::ILuaBase *LUA, int32_t index )
 {
-	CheckType( state, index );
-	CNetworkStringTable *stable = static_cast<userdata *>( LUA->GetUserdata( index ) )->stringtable;
-	if( stable == nullptr )
+	CheckType( LUA, index );
+	Container *udata = GetUserdata( LUA, index );
+	if( udata == nullptr )
 		LUA->ArgError( index, invalid_error );
 
-	return stable;
+	return udata->stringtable;
 }
 
-void Push( lua_State *state, CNetworkStringTable *stringtable )
+void Push( GarrysMod::Lua::ILuaBase *LUA, CNetworkStringTable *stringtable )
 {
 	if( stringtable == nullptr )
 	{
@@ -85,16 +84,15 @@ void Push( lua_State *state, CNetworkStringTable *stringtable )
 
 	LUA->Pop( 1 );
 
-	userdata *udata = static_cast<userdata *>( LUA->NewUserdata( sizeof( userdata ) ) );
+	Container *udata = LUA->NewUserType<Container>( metatype );
 	udata->stringtable = stringtable;
-	udata->type = metatype;
 	udata->name_original = stringtable->m_pszTableName;
 
-	LUA->CreateMetaTableType( metaname, metatype );
+	LUA->PushMetaTable( metatype );
 	LUA->SetMetaTable( -2 );
 
 	LUA->CreateTable( );
-	lua_setfenv( state, -2 );
+	lua_setfenv( LUA->state, -2 );
 
 	LUA->PushUserdata( stringtable );
 	LUA->Push( -2 );
@@ -102,12 +100,13 @@ void Push( lua_State *state, CNetworkStringTable *stringtable )
 	LUA->Remove( -2 );
 }
 
-static void Destroy( lua_State *state, int32_t index )
+static void Destroy( GarrysMod::Lua::ILuaBase *LUA, int32_t index )
 {
-	userdata *udata = GetUserdata( state, index );
-	CNetworkStringTable *stringtable = udata->stringtable;
-	if( stringtable == nullptr )
+	Container *udata = GetUserdata( LUA, index );
+	if( udata == nullptr )
 		return;
+
+	CNetworkStringTable *stringtable = udata->stringtable;
 
 	LUA->GetField( GarrysMod::Lua::INDEX_REGISTRY, table_name );
 	LUA->PushUserdata( stringtable );
@@ -116,7 +115,8 @@ static void Destroy( lua_State *state, int32_t index )
 	LUA->Pop( 1 );
 
 	stringtable->m_pszTableName = udata->name_original;
-	udata->stringtable = nullptr;
+	
+	LUA->SetUserType( index, nullptr );
 }
 
 LUA_FUNCTION_STATIC( gc )
@@ -124,19 +124,19 @@ LUA_FUNCTION_STATIC( gc )
 	if( !LUA->IsType( 1, metatype ) )
 		return 0;
 
-	Destroy( state, 1 );
+	Destroy( LUA, 1 );
 	return 0;
 }
 
 LUA_FUNCTION_STATIC( tostring )
 {
-	lua_pushfstring( state, "%s: %p", metaname, Get( state, 1 ) );
+	lua_pushfstring( LUA->state, "%s: %p", metaname, Get( LUA, 1 ) );
 	return 1;
 }
 
 LUA_FUNCTION_STATIC( eq )
 {
-	LUA->PushBool( Get( state, 1 ) == Get( state, 2 ) );
+	LUA->PushBool( Get( LUA, 1 ) == Get( LUA, 2 ) );
 	return 1;
 }
 
@@ -148,7 +148,7 @@ LUA_FUNCTION_STATIC( index )
 	if( !LUA->IsType( -1, GarrysMod::Lua::Type::NIL ) )
 		return 1;
 
-	lua_getfenv( state, 1 );
+	lua_getfenv( LUA->state, 1 );
 	LUA->Push( 2 );
 	LUA->RawGet( -2 );
 	return 1;
@@ -156,7 +156,7 @@ LUA_FUNCTION_STATIC( index )
 
 LUA_FUNCTION_STATIC( newindex )
 {
-	lua_getfenv( state, 1 );
+	lua_getfenv( LUA->state, 1 );
 	LUA->Push( 2 );
 	LUA->Push( 3 );
 	LUA->RawSet( -3 );
@@ -165,62 +165,61 @@ LUA_FUNCTION_STATIC( newindex )
 
 LUA_FUNCTION_STATIC( SetName )
 {
-	userdata *udata = GetUserdata( state, 1 );
-	CNetworkStringTable *stringtable = udata->stringtable;
-	if( stringtable == nullptr )
+	Container *udata = GetUserdata( LUA, 1 );
+	if( udata == nullptr )
 		LUA->ThrowError( invalid_error );
 
 	V_strncpy( udata->name, LUA->CheckString( 2 ), sizeof( udata->name ) );
-	stringtable->m_pszTableName = udata->name;
+	udata->stringtable->m_pszTableName = udata->name;
 
 	return 0;
 }
 
 LUA_FUNCTION_STATIC( GetName )
 {
-	LUA->PushString( Get( state, 1 )->GetTableName( ) );
+	LUA->PushString( Get( LUA, 1 )->GetTableName( ) );
 	return 1;
 }
 
 LUA_FUNCTION_STATIC( GetID )
 {
-	LUA->PushNumber( Get( state, 1 )->GetTableId( ) );
+	LUA->PushNumber( Get( LUA, 1 )->GetTableId( ) );
 	return 1;
 }
 
 LUA_FUNCTION_STATIC( GetNumStrings )
 {
-	LUA->PushNumber( Get( state, 1 )->GetNumStrings( ) );
+	LUA->PushNumber( Get( LUA, 1 )->GetNumStrings( ) );
 	return 1;
 }
 
 LUA_FUNCTION_STATIC( GetMaxStrings )
 {
-	LUA->PushNumber( Get( state, 1 )->GetMaxStrings( ) );
+	LUA->PushNumber( Get( LUA, 1 )->GetMaxStrings( ) );
 	return 1;
 }
 
 LUA_FUNCTION_STATIC( GetEntryBits )
 {
-	LUA->PushNumber( Get( state, 1 )->GetEntryBits( ) );
+	LUA->PushNumber( Get( LUA, 1 )->GetEntryBits( ) );
 	return 1;
 }
 
 LUA_FUNCTION_STATIC( SetTick )
 {
-	Get( state, 1 )->SetTick( static_cast<int32_t>( LUA->CheckNumber( 2 ) ) );
+	Get( LUA, 1 )->SetTick( static_cast<int32_t>( LUA->CheckNumber( 2 ) ) );
 	return 0;
 }
 
 LUA_FUNCTION_STATIC( ChangedSinceTick )
 {
-	LUA->PushBool( Get( state, 1 )->ChangedSinceTick( static_cast<int32_t>( LUA->CheckNumber( 2 ) ) ) );
+	LUA->PushBool( Get( LUA, 1 )->ChangedSinceTick( static_cast<int32_t>( LUA->CheckNumber( 2 ) ) ) );
 	return 1;
 }
 
 LUA_FUNCTION_STATIC( AddString )
 {
-	INetworkStringTable *stable = Get( state, 1 );
+	INetworkStringTable *stable = Get( LUA, 1 );
 	LUA->CheckType( 2, GarrysMod::Lua::Type::BOOL );
 	LUA->CheckType( 3, GarrysMod::Lua::Type::STRING );
 
@@ -230,7 +229,7 @@ LUA_FUNCTION_STATIC( AddString )
 
 LUA_FUNCTION_STATIC( SetString )
 {
-	CNetworkStringTable *stable = Get( state, 1 );
+	CNetworkStringTable *stable = Get( LUA, 1 );
 	LUA->CheckType( 2, GarrysMod::Lua::Type::NUMBER );
 	LUA->CheckType( 3, GarrysMod::Lua::Type::STRING );
 
@@ -266,7 +265,7 @@ LUA_FUNCTION_STATIC( SetString )
 
 LUA_FUNCTION_STATIC( GetString )
 {
-	INetworkStringTable *stable = Get( state, 1 );
+	INetworkStringTable *stable = Get( LUA, 1 );
 	LUA->CheckType( 2, GarrysMod::Lua::Type::NUMBER );
 
 	const char *str = stable->GetString( static_cast<int32_t>( LUA->GetNumber( 2 ) ) );
@@ -279,7 +278,7 @@ LUA_FUNCTION_STATIC( GetString )
 
 LUA_FUNCTION_STATIC( DeleteString )
 {
-	CNetworkStringTable *stable = Get( state, 1 );
+	CNetworkStringTable *stable = Get( LUA, 1 );
 	LUA->CheckType( 2, GarrysMod::Lua::Type::NUMBER );
 
 	uint32_t index = static_cast<uint32_t>( LUA->GetNumber( 2 ) );
@@ -323,7 +322,7 @@ LUA_FUNCTION_STATIC( DeleteString )
 
 LUA_FUNCTION_STATIC( SetStringUserData )
 {
-	INetworkStringTable *stable = Get( state, 1 );
+	INetworkStringTable *stable = Get( LUA, 1 );
 	LUA->CheckType( 2, GarrysMod::Lua::Type::NUMBER );
 	LUA->CheckType( 3, GarrysMod::Lua::Type::STRING );
 
@@ -335,7 +334,7 @@ LUA_FUNCTION_STATIC( SetStringUserData )
 
 LUA_FUNCTION_STATIC( GetStringUserData )
 {
-	INetworkStringTable *stable = Get( state, 1 );
+	INetworkStringTable *stable = Get( LUA, 1 );
 	LUA->CheckType( 2, GarrysMod::Lua::Type::NUMBER );
 
 	int32_t len = 0;
@@ -346,13 +345,13 @@ LUA_FUNCTION_STATIC( GetStringUserData )
 
 LUA_FUNCTION_STATIC( FindStringIndex )
 {
-	LUA->PushNumber( Get( state, 1 )->FindStringIndex( LUA->CheckString( 2 ) ) );
+	LUA->PushNumber( Get( LUA, 1 )->FindStringIndex( LUA->CheckString( 2 ) ) );
 	return 1;
 }
 
 LUA_FUNCTION_STATIC( SetAllowClientSideAddString )
 {
-	INetworkStringTable *stable = Get( state, 1 );
+	INetworkStringTable *stable = Get( LUA, 1 );
 	LUA->CheckType( 2, GarrysMod::Lua::Type::BOOL );
 
 	stringtablecontainer::stcinternal->SetAllowClientSideAddString( stable, LUA->GetBool( 2 ) );
@@ -361,7 +360,7 @@ LUA_FUNCTION_STATIC( SetAllowClientSideAddString )
 
 LUA_FUNCTION_STATIC( DeleteAllStrings )
 {
-	CNetworkStringTable *stable = Get( state, 1 );
+	CNetworkStringTable *stable = Get( LUA, 1 );
 
 	CNetworkStringDict *networkdict = stable->m_pItems;
 	if( networkdict == nullptr || networkdict->Count( ) == 0 )
@@ -378,7 +377,7 @@ LUA_FUNCTION_STATIC( DeleteAllStrings )
 
 LUA_FUNCTION_STATIC( GetTable )
 {
-	INetworkStringTable *stable = Get( state, 1 );
+	INetworkStringTable *stable = Get( LUA, 1 );
 
 	LUA->CreateTable( );
 
@@ -396,7 +395,7 @@ LUA_FUNCTION_STATIC( GetTable )
 
 LUA_FUNCTION_STATIC( GetStrings )
 {
-	INetworkStringTable *stable = Get( state, 1 );
+	INetworkStringTable *stable = Get( LUA, 1 );
 
 	LUA->CreateTable( );
 
@@ -412,7 +411,7 @@ LUA_FUNCTION_STATIC( GetStrings )
 
 LUA_FUNCTION_STATIC( GetStringsUserData )
 {
-	INetworkStringTable *stable = Get( state, 1 );
+	INetworkStringTable *stable = Get( LUA, 1 );
 
 	LUA->CreateTable( );
 
@@ -430,25 +429,25 @@ LUA_FUNCTION_STATIC( GetStringsUserData )
 
 LUA_FUNCTION_STATIC( Dump )
 {
-	Get( state, 1 )->Dump( );
+	Get( LUA, 1 )->Dump( );
 	return 0;
 }
 
 LUA_FUNCTION_STATIC( Lock )
 {
-	CNetworkStringTable *stable = Get( state, 1 );
+	CNetworkStringTable *stable = Get( LUA, 1 );
 	LUA->CheckType( 2, GarrysMod::Lua::Type::BOOL );
 
 	stable->Lock( LUA->GetBool( 2 ) );
 	return 0;
 }
 
-void Initialize( lua_State *state )
+void Initialize( GarrysMod::Lua::ILuaBase *LUA )
 {
 	LUA->CreateTable( );
 	LUA->SetField( GarrysMod::Lua::INDEX_REGISTRY, table_name );
 
-	LUA->CreateMetaTableType( metaname, metatype );
+	metatype = LUA->CreateMetaTable( metaname );
 
 	LUA->PushCFunction( gc );
 	LUA->SetField( -2, "__gc" );
@@ -534,7 +533,7 @@ void Initialize( lua_State *state )
 	LUA->Pop( 1 );
 }
 
-void Deinitialize( lua_State *state )
+void Deinitialize( GarrysMod::Lua::ILuaBase *LUA )
 {
 	LUA->PushNil( );
 	LUA->SetField( GarrysMod::Lua::INDEX_REGISTRY, metaname );
@@ -545,7 +544,7 @@ void Deinitialize( lua_State *state )
 		LUA->PushNil( );
 		while( LUA->Next( -2 ) != 0 )
 		{
-			Destroy( state, -1 );
+			Destroy( LUA, -1 );
 			LUA->Pop( 1 );
 		}
 	}

@@ -24,14 +24,14 @@
 
 GMOD_MODULE_OPEN( )
 {
-	stringtablecontainer::Initialize( state );
-	stringtable::Initialize( state );
+	stringtablecontainer::Initialize( LUA );
+	stringtable::Initialize( LUA );
 	return 0;
 }
 
 GMOD_MODULE_CLOSE( )
 {
-	stringtable::Deinitialize( state );
-	stringtablecontainer::Deinitialize( state );
+	stringtable::Deinitialize( LUA );
+	stringtablecontainer::Deinitialize( LUA );
 	return 0;
 }
