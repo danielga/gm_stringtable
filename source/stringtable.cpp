@@ -47,7 +47,7 @@ static const char table_name[] = "stringtables_objects";
 inline void CheckType( GarrysMod::Lua::ILuaBase *LUA, int32_t index )
 {
 	if( !LUA->IsType( index, metatype ) )
-		luaL_typerror( LUA->state, index, metaname );
+		luaL_typerror( LUA->GetState( ), index, metaname );
 }
 
 inline Container *GetUserdata( GarrysMod::Lua::ILuaBase *LUA, int index )
@@ -92,7 +92,7 @@ void Push( GarrysMod::Lua::ILuaBase *LUA, CNetworkStringTable *stringtable )
 	LUA->SetMetaTable( -2 );
 
 	LUA->CreateTable( );
-	lua_setfenv( LUA->state, -2 );
+	lua_setfenv( LUA->GetState( ), -2 );
 
 	LUA->PushUserdata( stringtable );
 	LUA->Push( -2 );
@@ -130,7 +130,7 @@ LUA_FUNCTION_STATIC( gc )
 
 LUA_FUNCTION_STATIC( tostring )
 {
-	lua_pushfstring( LUA->state, "%s: %p", metaname, Get( LUA, 1 ) );
+	lua_pushfstring( LUA->GetState( ), "%s: %p", metaname, Get( LUA, 1 ) );
 	return 1;
 }
 
@@ -148,7 +148,7 @@ LUA_FUNCTION_STATIC( index )
 	if( !LUA->IsType( -1, GarrysMod::Lua::Type::NIL ) )
 		return 1;
 
-	lua_getfenv( LUA->state, 1 );
+	lua_getfenv( LUA->GetState( ), 1 );
 	LUA->Push( 2 );
 	LUA->RawGet( -2 );
 	return 1;
@@ -156,7 +156,7 @@ LUA_FUNCTION_STATIC( index )
 
 LUA_FUNCTION_STATIC( newindex )
 {
-	lua_getfenv( LUA->state, 1 );
+	lua_getfenv( LUA->GetState( ), 1 );
 	LUA->Push( 2 );
 	LUA->Push( 3 );
 	LUA->RawSet( -3 );
