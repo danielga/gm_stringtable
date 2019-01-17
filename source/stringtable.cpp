@@ -40,7 +40,7 @@ struct Container
 };
 
 static const char metaname[] = "stringtable";
-static uint8_t metatype = GarrysMod::Lua::Type::NONE;
+static int32_t metatype = GarrysMod::Lua::Type::NONE;
 static const char invalid_error[] = "invalid stringtable";
 static const char table_name[] = "stringtables_objects";
 
@@ -111,7 +111,7 @@ static void Destroy( GarrysMod::Lua::ILuaBase *LUA, int32_t index )
 	LUA->GetField( GarrysMod::Lua::INDEX_REGISTRY, table_name );
 	LUA->PushUserdata( stringtable );
 	LUA->PushNil( );
-	LUA->SetTable( -2 );
+	LUA->SetTable( -3 );
 	LUA->Pop( 1 );
 
 	stringtable->m_pszTableName = udata->name_original;
