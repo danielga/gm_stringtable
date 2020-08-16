@@ -1,15 +1,9 @@
-#include <stringtable.hpp>
-#include <stringtablecontainer.hpp>
+#include "stringtable.hpp"
+#include "stringtablecontainer.hpp"
+#include "hackednetworkstringtable.h"
+
 #include <GarrysMod/Lua/Interface.h>
-#include <hackednetworkstringtable.h>
 #include <lua.hpp>
-
-#if defined min || defined max
-
-#undef min
-#undef max
-
-#endif
 
 #include <cstdint>
 #include <algorithm>
@@ -326,7 +320,7 @@ LUA_FUNCTION_STATIC( SetStringUserData )
 	LUA->CheckType( 2, GarrysMod::Lua::Type::NUMBER );
 	LUA->CheckType( 3, GarrysMod::Lua::Type::STRING );
 
-	size_t len = 0;
+	unsigned int len = 0;
 	const char *userdata = LUA->GetString( 3, &len );
 	stable->SetStringUserData( static_cast<int32_t>( LUA->GetNumber( 2 ) ), static_cast<int32_t>( len ), userdata );
 	return 0;
