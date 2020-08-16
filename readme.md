@@ -1,5 +1,6 @@
 # gm_stringtable
 
+[![Build Status](https://metamann.visualstudio.com/GitHub%20danielga/_apis/build/status/danielga.gm_stringtable?branchName=master)](https://metamann.visualstudio.com/GitHub%20danielga/_build/latest?definitionId=11&branchName=master)  
 A module for Garry's Mod that provides interfaces to interact with stringtables from VALVe's engine.
 
 # Info
