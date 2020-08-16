@@ -6,9 +6,6 @@ variables:
   GARRYSMOD_COMMON_REPOSITORY: https://github.com/danielga/garrysmod_common.git
   PROJECT_GENERATOR_VERSION: 2
   REPOSITORY_DIR: $(System.DefaultWorkingDirectory)
-  SOURCE_SDK: $(System.DefaultWorkingDirectory)/dependencies/sourcesdk-minimal
-  SOURCE_SDK_BRANCH: master
-  SOURCE_SDK_REPOSITORY: https://github.com/danielga/sourcesdk-minimal.git
 trigger:
   tags:
     include:
@@ -128,6 +125,7 @@ jobs:
   dependsOn:
     - windows
     - linux
+    - macosx
   steps:
   - task: DownloadBuildArtifacts@0
     displayName: 'Download build artifacts'

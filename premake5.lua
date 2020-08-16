@@ -1,3 +1,5 @@
+PROJECT_GENERATOR_VERSION = 2
+
 newoption({
 	trigger = "gmcommon",
 	description = "Sets the path to the garrysmod_common (https://github.com/danielga/garrysmod_common) directory",
@@ -11,12 +13,14 @@ include(gmcommon)
 CreateWorkspace({name = "stringtable", abi_compatible = true})
 	CreateProject({serverside = true})
 		IncludeLuaShared()
+		IncludeHelpersExtended()
 		IncludeSDKCommon()
 		IncludeSDKTier0()
 		IncludeSDKTier1()
 
 	CreateProject({serverside = false})
 		IncludeLuaShared()
+		IncludeHelpersExtended()
 		IncludeSDKCommon()
 		IncludeSDKTier0()
 		IncludeSDKTier1()

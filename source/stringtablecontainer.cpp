@@ -1,16 +1,10 @@
-#include <stringtablecontainer.hpp>
-#include <stringtable.hpp>
+#include "stringtablecontainer.hpp"
+#include "stringtable.hpp"
+#include "hackednetworkstringtable.h"
+
 #include <GarrysMod/Lua/Interface.h>
-#include <hackednetworkstringtable.h>
+#include <GarrysMod/InterfacePointers.hpp>
 
-#if defined max || defined min
-
-#undef max
-#undef min
-
-#endif
-
-#include <GarrysMod/Interfaces.hpp>
 #include <cstdint>
 
 void CNetworkStringTableContainer::Dump( )
@@ -32,18 +26,6 @@ bool CNetworkStringTableContainer::Lock( bool bLock )
 
 namespace stringtablecontainer
 {
-
-static SourceSDK::FactoryLoader engine_loader( "engine", false, IS_SERVERSIDE );
-
-#if defined STRINGTABLE_SERVER
-
-static const char *networkstringtable_interface = INTERFACENAME_NETWORKSTRINGTABLESERVER;
-
-#elif defined STRINGTABLE_CLIENT
-
-static const char *networkstringtable_interface = INTERFACENAME_NETWORKSTRINGTABLECLIENT;
-
-#endif
 
 CNetworkStringTableContainer *stcinternal = nullptr;
 
@@ -99,17 +81,17 @@ LUA_FUNCTION_STATIC( GetNames )
 
 void Initialize( GarrysMod::Lua::ILuaBase *LUA )
 {
-	stcinternal = engine_loader.GetInterface<CNetworkStringTableContainer>( networkstringtable_interface );
+	stcinternal = static_cast<CNetworkStringTableContainer *>( InterfacePointers::NetworkStringTableContainer( ) );
 	if( stcinternal == nullptr )
 		LUA->ThrowError( "unable to initialize INetworkStringTableContainer" );
 
 	LUA->CreateTable( );
 
-	LUA->PushString( "stringtable 1.1.2" );
+	LUA->PushString( "stringtable 1.1.3" );
 	LUA->SetField( -2, "Version" );
 
 	// version num follows LuaJIT style, xxyyzz
-	LUA->PushNumber( 10102 );
+	LUA->PushNumber( 10103 );
 	LUA->SetField( -2, "VersionNum" );
 
 	LUA->PushCFunction( Find );
