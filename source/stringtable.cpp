@@ -109,7 +109,7 @@ static void Destroy( GarrysMod::Lua::ILuaBase *LUA, int32_t index )
 	LUA->Pop( 1 );
 
 	stringtable->m_pszTableName = udata->name_original;
-	
+
 	LUA->SetUserType( index, nullptr );
 }
 
@@ -337,6 +337,18 @@ LUA_FUNCTION_STATIC( GetStringUserData )
 	return 1;
 }
 
+LUA_FUNCTION_STATIC( GetStringUserDataInt )
+{
+	INetworkStringTable *stable = Get(LUA, 1);
+	LUA->CheckType(2, GarrysMod::Lua::Type::NUMBER);
+
+	int32_t len = 0;
+	const void *userdata = stable->GetStringUserData(static_cast<int32_t>(LUA->GetNumber(2)), &len);
+
+	LUA->PushNumber(*(unsigned int *)userdata);
+	return 1;
+}
+
 LUA_FUNCTION_STATIC( FindStringIndex )
 {
 	LUA->PushNumber( Get( LUA, 1 )->FindStringIndex( LUA->CheckString( 2 ) ) );
@@ -500,7 +512,10 @@ void Initialize( GarrysMod::Lua::ILuaBase *LUA )
 	LUA->PushCFunction( GetStringUserData );
 	LUA->SetField( -2, "GetStringUserData" );
 
-	LUA->PushCFunction( FindStringIndex );
+	LUA->PushCFunction( GetStringUserDataInt );
+	LUA->SetField(-2, "GetStringUserDataInt" );
+
+	LUA->PushCFunction(FindStringIndex);
 	LUA->SetField( -2, "FindStringIndex" );
 
 	LUA->PushCFunction( SetAllowClientSideAddString );
