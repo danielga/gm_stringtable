@@ -339,13 +339,13 @@ LUA_FUNCTION_STATIC( GetStringUserData )
 
 LUA_FUNCTION_STATIC( GetStringUserDataInt )
 {
-	INetworkStringTable *stable = Get(LUA, 1);
-	LUA->CheckType(2, GarrysMod::Lua::Type::NUMBER);
+	INetworkStringTable *stable = Get( LUA, 1 );
+	LUA->CheckType( 2, GarrysMod::Lua::Type::NUMBER );
 
 	int32_t len = 0;
-	const void *userdata = stable->GetStringUserData(static_cast<int32_t>(LUA->GetNumber(2)), &len);
+	const void *userdata = stable->GetStringUserData( static_cast<int32_t>( LUA->GetNumber( 2 ) ), &len );
 
-	LUA->PushNumber(*(unsigned int *)userdata);
+	LUA->PushNumber( *(unsigned int *)userdata );
 	return 1;
 }
 
@@ -513,7 +513,7 @@ void Initialize( GarrysMod::Lua::ILuaBase *LUA )
 	LUA->SetField( -2, "GetStringUserData" );
 
 	LUA->PushCFunction( GetStringUserDataInt );
-	LUA->SetField(-2, "GetStringUserDataInt" );
+	LUA->SetField( -2, "GetStringUserDataInt" );
 
 	LUA->PushCFunction(FindStringIndex);
 	LUA->SetField( -2, "FindStringIndex" );
